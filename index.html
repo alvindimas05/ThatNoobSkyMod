@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="sunset">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>That Noob Sky Mod</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        * {
+            font-family: 'Inter', 'sans-serif';
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .status-indicator {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+    </style>
+    <script>
+        const clientVersion = "1.0.0";
+        const baseUrl = "http://localhost:7253";
+        const levelCategories = [
+            {
+                name: 'Home',
+                levels: ['CandleSpace', 'MainStreet'],
+            },
+            {
+                name: 'Aviary Village',
+                levels: [
+                    'MainStreet', 'MainStreetFlyingIntro', 'MainStreet_ShopOutfits', 'MainStreet_ShopSpells', 'MainStreet_ShopProps',
+                    'MainStreet_Apartment', 'MainStreet_Cafe', 'MainStreet_ConcertHall', 'MainStreet_Soundbath', 'MainStreet_Cafe_Wonderland'
+                ],
+            },
+            {
+                name: 'Isle of Dawn',
+                levels: ['Dawn', 'DawnCave', 'Dawn_TrialsWater', 'Dawn_TrialsEarth', 'Dawn_TrialsAir', 'Dawn_TrialsFire'],
+            },
+            {
+                name: 'Daylight Prairie',
+                levels: ['Prairie_ButterflyFields', 'Prairie_Cave', 'Prairie_NestAndKeeper', 'Prairie_Island', 'Prairie_Village', 'Prairie_WildLifePark', 'DayHubCave', 'DayEnd'],
+            },
+            {
+                name: 'Hidden Forest',
+                levels: ['Rain', 'RainForest', 'RainMid', 'RainShelter', 'Rain_BlueBirdTheater', 'Rain_Cave', 'Rain_BaseCamp', 'RainEnd', 'Skyway'],
+            },
+            {
+                name: 'Valley of Triumph',
+                levels: [
+                    'Sunset', 'SunsetRace', 'Sunset_Citadel', 'Sunset_FlyRace', 'SunsetColosseum', 'SunsetEnd2', 'SunsetVillage', 'Sunset_Theater',
+                    'SunsetVillage_MusicShop', 'Sunset_YetiPark', 'Event_Cinema',
+                ],
+            },
+            {
+                name: 'Golden Wasteland',
+                levels: [
+                    'Dusk Start', 'Dusk', 'Dusk_Triangle', 'Dusk_TriangleEnd', 'DuskOasis', 'DuskGraveyard', 'Dusk_CrabField', 'DuskMid',
+                    'DuskMid_Past', 'DuskMid_PastMarket', 'Dusk_HiddenTemple', 'DuskEnd', 'DuskEnd_Past',
+                ],
+            },
+            {
+                name: 'Vault of Knowledge',
+                levels: ['Night', 'Night2', 'NightEnd', 'NightArchive', 'Night_Shelter', 'Night_IPHallway'],
+            },
+            {
+                name: 'Eye of Eden',
+                levels: ['StormEvent_VoidSpace', 'StormStart', 'Storm', 'StormEnd', 'OrbitMid', 'OrbitEnd', 'CandleSpaceEnd', 'Credits'],
+            },
+            {
+                name: 'Aurora',
+                levels: ['Event_Arr_Runaway', 'Event_Arr_SoftInside', 'Event_Arr_Warrior', 'Event_Arr_TheSeed', 'Event_Arr_EyesOfAChild', 'Event_Arr_ExhaleInhale'],
+            },
+            {
+                name: 'The Little Prince',
+                levels: ['NightDesert', 'NightDesert_Beach', 'Night_JarCave', 'Night_InfiniteDesert', 'NightDesert_Planets'],
+            },
+            {
+                name: 'Nine-Colored Deer',
+                levels: ['Night_PaintedWorld'],
+            },
+            {
+                name: 'Moomin',
+                levels: ['Night_StoryBook', 'Night_ValleyForest', 'Night_ValleyHouse', 'Night_ValleyHouseSky', 'Season24Void1'],
+            },
+            {
+                name: 'Days of Event',
+                levels: ['Event_DaysOfMischief', 'Event_DaysOfMoonlight_HugeMoon'],
+            },
+            {
+                name: 'Other',
+                levels: ['Nintendo_CandleSpace', 'TGCOffice', 'VoidSharedSpace'],
+            },
+        ];
+        const progressionLevels = [
+            {
+                name: 'CandleSpace',
+                positions: [
+                    [11.52, 0.61, -9.42],
+                    [11.91, 0.66, -20.46],
+                    [15.77, 0.69, -18.4],
+                    [19.19, 0.71, -16.35],
+                    [22.15, 0.79, -13.64],
+                    [22.97, 0.67, -9.65],
+                    [0.2, 0.02, 20.92],
+                ],
+            },
+            {
+                name: 'MainStreet',
+                positions: [
+                    [52.42, 217.12, -111.30],
+                    [47.5, 217.24, -98.82],
+                    [52.38, 217.92, -97.73],
+                    [39.26, 217.81, -86.40],
+                    [42.61, 217, -80.89],
+                    [38.08, 217.13, -64.83],
+                    [31.91, 217, -67.96],
+                    [7.38, 213.8, -35.63],
+                    [17.15, 214.25, -25.75]
+                ],
+            },
+            {
+                name: 'Dawn',
+                positions: [
+                    [55.82, 1.88, 198.38],
+                    [281.94, 2.59, 188.84],
+                    [414.43, 95.28, -6.94],
+                    [411.4, 116.71, -20.83],
+                    [373.93, 52.48, -12.62],
+                    [410.98, 60.66, -9.36],
+                    [154.11, 102.81, -258.15],
+                    [151.64, 102.78, -263.28],
+                    [153.17, 103.36, -267.76],
+                    [141.96, 88.02, -248.93],
+                    [146.82, 86.24, -237.12],
+                    [151.27, 87.43, -236.05],
+                    [158.11, 85.51, -247.83],
+                    [152.1, 86.49, -250.02],
+                    [154.6, 86.86, -254.17],
+                    [221.15, 4.87, -41.22],
+                    [213.49, 4.75, -41.21],
+                    [208.84, 4.38, -75.10],
+                ],
+            },
+            {
+                name: 'DawnCave',
+                positions: [
+                    [-2.92, 236.08, -300.35],
+                    [-13.84, 303.74, -326.07],
+                    [-89.77, 245.05, -304.39],
+                    [-28.33, 253.93, -372],
+                    [22.06, 259.26, -347.12],
+                    [56.85, 251.74, -326.3],
+                ],
+            },
+            {
+                name: 'Dawn_TrialsWater',
+                positions: [
+                    [36.86, 65.67, -99.8],
+                    [-107.43, 63, -210.73],
+                    [-1.31, 70.07, -429.41],
+                    [-0.14, 78.9, -412.06],
+                ],
+            },
+            {
+                name: 'Dawn_TrialsEarth',
+                positions: [
+                    [31.12, 124.39, 5.87],
+                    [-21.81, 122.05, -41.73],
+                    [18.66, 122.1, -0.26],
+                    [-49, 120.8, 63.17],
+                    [-30.56, 124.44, -25.79],
+                    [6.5, 122.58, -3.86],
+                    [1.47, 128.3, 16.03],
+                    [-13.96, 134, 2.96],
+                ],
+            },
+            {
+                name: 'Dawn_TrialsAir',
+                positions: [
+                    [-7.9, 105.17, -135.54],
+                    [-4.97, 105.27, -130.76],
+                    [-11.3, 106.24, -130.45],
+                ],
+            },
+            {
+                name: 'Dawn_TrialsFire',
+                positions: [
+                    [-14.46, 50.12, -249.82],
+                    [-12.54, 50.25, -258.13],
+                    [-12.01, 50.13, -308],
+                ],
+            },
+            {
+                name: 'Skyway',
+                positions: [
+                    [-148.37, 327.07, 273.79],
+                    [-121.01, 331.98, 267.38],
+                    [-137.56, 315.47, 214.19],
+                    [-146.21, 366.73, 245.72],
+                    [-135.27, 323.09, 155.78],
+                    [-134.58, 337.82, 131.45],
+                    [-108.03, 359.19, 123.31],
+                    [-92.59, 350.85, 127.54],
+                    [-214.39, 378.22, 335.64],
+                    [-220.96, 366.62, 325.70],
+                    [-201.47, 363.28, 334.83],
+                    [-165.21, 345.11, 362.28],
+                    [-154.67, 331.51, 347.58],
+                    [-151.62, 341.01, 364.88],
+                    [338.27, 330.87, 381.54],
+                    [524.21, 319.66, 429.57],
+                    [525.88, 318.91, 442.31],
+                    [691.33, 343.55, 341.23],
+                    [631.98, 319.15, 164.80],
+                    [418.42, 346.03, 75.36],
+                    [218.93, 312.23, 97.07],
+                    [335.25, 319.23, 282.17],
+                    [374.86, 306.23, 202.52],
+                    [388.61, 352.36, 234.83],
+                    [581.98, 335.02, 275.30],
+                    [199.86, 274.12, 30.30],
+                    [723.12, 286.30, 94.93],
+                    [779.45, 293.86, 354.23],
+                    [540.60, 283.02, 496.70],
+                ],
+            },
+        ];
+        const teleportCooldown = 5;
+        let gameInfo = null;
+        let canTeleport = true;
+        let autoBurnCandles = false;
+        let savedLocations = [];
+        let accounts = [];
+    </script>
+    <script>
+        function initializeLevelCategories() {
+            $('#select-level-category').html(
+                levelCategories.map(category => `<option value="${category.name}">${category.name}</option>`).join()
+            ).change(updateLevelLevels);
+        }
+        async function checkBraveBrowser() {
+            if ((navigator.brave && await navigator.brave.isBrave() || false)) {
+                modalBraveWarning.showModal();
+            }
+        }
+        function updateLevelLevels() {
+            $('#select-level-level').html(
+                levelCategories.find(category => category.name === $('#select-level-category').find(':selected').val())
+                    .levels.map(level => `<option value="${level}">${level}</option>`)
+            );
+        }
+        async function updateModInfo() {
+            try {
+                const res = await $.get(`${baseUrl}/info`);
+                if (gameInfo === null) {
+                    checkModUpdateStatus();
+                    updateAccountsManager();
+                }
+                if (gameInfo === null || gameInfo.currentLevel !== res.currentLevel) {
+                    gameInfo = {
+                        currentLevel: res.currentLevel ?? 'None',
+                    };
+                    $('#current-level').text(gameInfo.currentLevel);
+                    $('#badge-mod-status').html('Online').removeClass('badge-neutral').addClass('badge-success');
+                    updateProgressionPositions();
+                }
+                gameInfo.playerPosition = res.playerPosition ?? { x: 0, y: 0, z: 0 };
+                updatePlayerPosition();
+            } catch (err) {
+                gameInfo = null;
+                $('#current-level').text('None');
+                $('#badge-mod-status').html('Offline').removeClass('badge-success').addClass('badge-neutral');
+                updateProgressionPositions();
+                updatePlayerPosition();
+                console.error(err);
+            }
+        }
+        async function updatePlayerPosition() {
+            if (!gameInfo) {
+                $('#player-position-x').text('0');
+                $('#player-position-y').text('0');
+                $('#player-position-z').text('0');
+                return;
+            }
+            $('#player-position-x').text(gameInfo.playerPosition.x.toFixed(2));
+            $('#player-position-y').text(gameInfo.playerPosition.y.toFixed(2));
+            $('#player-position-z').text(gameInfo.playerPosition.z.toFixed(2));
+        }
+        async function updateProgressionPositions() {
+            if (!gameInfo || gameInfo.currentLevel === 'None') {
+                $('#progression-positions').html('');
+                return;
+            }
+            try {
+                $('#progression-positions').html(progressionLevels.find(level => level.name === gameInfo.currentLevel).positions
+                    .map((position, index) => `
+                        <button class="btn btn-sm btn-primary aspect-square p-0 font-bold hover:scale-110 transition-transform"
+                            onclick="goToProgression('${gameInfo.currentLevel}', ${index})" title="Position ${index + 1}">
+                            <i class="fas fa-map-pin"></i>
+                        </button>
+                    `).join(''));
+            } catch (err) {
+                $('#progression-positions').html('');
+            }
+        }
+        async function goToProgression(levelName, index) {
+            const [x, y, z] = progressionLevels.find(level => level.name === levelName).positions[index];
+            await requestTeleport(x, y, z);
+        }
+        async function requestTeleport(x, y, z) {
+            try {
+                const url = new URL(`${baseUrl}/teleport`);
+                url.searchParams.append('x', x);
+                url.searchParams.append('y', y);
+                url.searchParams.append('z', z);
+
+                await $.get(url.toString());
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        async function startTeleportCooldown() {
+            const element = $('#label-teleport-cooldown');
+            let cooldown = teleportCooldown;
+
+            element.html('<i class="fas fa-clock"></i> Cooldown: ' + cooldown + 's');
+            const interval = setInterval(() => {
+                cooldown--;
+                if (cooldown <= 0) {
+                    canTeleport = true;
+                    clearInterval(interval);
+                    element.html('');
+                    return;
+                }
+                element.html('<i class="fas fa-clock"></i> Cooldown: ' + cooldown + 's');
+            }, 1000);
+        }
+        async function updateAccountsManager() {
+            try {
+                const res = await $.get(`${baseUrl}/get-local-accounts`);
+
+                accounts = res.accounts;
+
+                const sortedAccounts = res.accounts.sort((a, b) => {
+                    const numA = parseInt(a.match(/\d+/)?.[0] || 0, 10);
+                    const numB = parseInt(b.match(/\d+/)?.[0] || 0, 10);
+
+                    // First compare prefix (non-numeric part)
+                    const prefixA = a.replace(/\d+/g, '');
+                    const prefixB = b.replace(/\d+/g, '');
+                    if (prefixA !== prefixB) return prefixA.localeCompare(prefixB);
+
+                    // Then compare numeric part
+                    return numA - numB;
+                });
+
+                $('#accounts-manager-list').html(sortedAccounts.map(account => `
+                    <div class="flex items-center justify-between p-3 rounded-lg bg-base-200/50 hover:bg-base-200 transition-colors">
+                        <span class="font-medium">${account}</span>
+                        <button class="btn btn-sm btn-secondary gap-2" onclick="switchAccount('${account}')">
+                            <i class="fas fa-right-left"></i>
+                            Switch
+                        </button>
+                    </div>
+                `).join(''));
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        async function switchAccount(accountName) {
+            try {
+                const url = new URL(`${baseUrl}/switch-account`);
+                url.searchParams.append('name', accountName);
+                await $.get(url.toString());
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        async function checkModUpdateStatus() {
+            try {
+                const res = await $.get(`${baseUrl}/version`);
+                if (res.version === clientVersion) {
+                    $('#badge-mod-update-status').html('<div class="badge badge-info gap-2"><i class="fas fa-check"></i><span>Up to Date</span></div>');
+                } else {
+                    $('#badge-mod-update-status').html('<div class="badge badge-error gap-2"><i class="fas fa-exclamation-triangle"></i><span>Outdated</span></div>');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        async function handleButtonPing() {
+            try {
+                const res = await $.get(`${baseUrl}/ping`);
+                $('#ping-response').html('<i class="fas fa-check text-success"></i> Pong');
+            } catch (err) {
+                console.error(err);
+                $('#ping-response').html('<i class="fas fa-times text-error"></i> Error');
+            }
+        }
+        async function handleButtonTeleport() {
+            try {
+                const x = parseFloat($('#input-teleport-x').val());
+                const y = parseFloat($('#input-teleport-y').val());
+                const z = parseFloat($('#input-teleport-z').val());
+
+                if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                    $('#teleport-response').html('<i class="fas fa-exclamation-triangle text-warning"></i> Invalid');
+                    return;
+                }
+
+                requestTeleport(x, y, z);
+
+                $('#teleport-response').html('<i class="fas fa-check-circle text-success"></i> Teleported!');
+                setTimeout(() => $('#teleport-response').html(''), 3000);
+            } catch (err) {
+                console.error(err);
+                $('#teleport-response').html('<i class="fas fa-times text-error"></i> Error');
+            }
+        }
+        async function handleButtonLoadLevel() {
+            try {
+                const level = $('#select-level-level').find(':selected').val();
+                const url = new URL(`${baseUrl}/level`);
+                url.searchParams.append('name', level);
+                url.searchParams.append('fade', $('#checkbox-level-fade').is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        async function handleAutoBurnCandlesChange() {
+            try {
+                const url = new URL(`${baseUrl}/auto-burn-candles`);
+                url.searchParams.append('enable', $(this).is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch (err) {
+                $(this).prop('checked', false);
+                console.error(err);
+            }
+        }
+        async function handleAutoBurnPlantsChange() {
+            try {
+                const url = new URL(`${baseUrl}/auto-burn-plants`);
+                url.searchParams.append('enable', $(this).is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch (err) {
+                $(this).prop('checked', false);
+                console.error(err);
+            }
+        }
+        async function handleAutoBurnDyesChange() {
+            try {
+                const url = new URL(`${baseUrl}/auto-burn-dyes`);
+                url.searchParams.append('enable', $(this).is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch (err) {
+                $(this).prop('checked', false);
+                console.error(err);
+            }
+        }
+        async function handleAutoCollectWaxChange() {
+            try {
+                const url = new URL(`${baseUrl}/auto-collect-wax`);
+                url.searchParams.append('enable', $(this).is(':checked') ? 'true' : 'false');
+                await $.get(url.toString());
+            } catch (err) {
+                $(this).prop('checked', false);
+                console.error(err);
+            }
+        }
+        async function handleCreateNewAccount() {
+            try {
+                await $.get(`${baseUrl}/create-new-account`);
+                updateAccountsManager();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        async function handleSaveCurrentAccount() {
+            modalSaveCurrentAccount.showModal();
+        }
+        async function handleCancelSaveCurrentAccount() {
+            modalSaveCurrentAccount.close();
+            $('#input-save-account-username').val('');
+        }
+        async function handleConfirmSaveCurrentAccount() {
+            const username = $('#input-save-account-username').val().trim();
+            if (username.length === 0) {
+                alert('Please enter a valid username.');
+                return;
+            }
+
+            if (accounts.includes(username)) {
+                alert('An account with this username already exists.');
+                return;
+            }
+            try {
+                const url = new URL(`${baseUrl}/save-current-account`);
+                url.searchParams.append('name', username);
+                await $.get(url.toString());
+                updateAccountsManager();
+                handleCancelSaveCurrentAccount();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        async function handleReloadCurrentAccount() {
+            try {
+                await $.get(`${baseUrl}/reload-account`);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        async function handleUnlockAllRealms() {
+            try {
+                await $.get(`${baseUrl}/unlock-all-realms`);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        $(() => {
+            checkBraveBrowser();
+            initializeLevelCategories();
+            updateLevelLevels();
+            updateModInfo();
+            setInterval(updateModInfo, 1000);
+            $('#btn-ping').click(handleButtonPing);
+            $('#btn-teleport').click(handleButtonTeleport);
+            $('#btn-load-level').click(handleButtonLoadLevel);
+            $('#checkbox-auto-burn-candles').change(handleAutoBurnCandlesChange);
+            $('#checkbox-auto-burn-plants').change(handleAutoBurnPlantsChange);
+            $('#checkbox-auto-burn-dyes').change(handleAutoBurnDyesChange);
+            $('#checkbox-auto-collect-wax').change(handleAutoCollectWaxChange);
+            $('#btn-save-location').click(() => {
+                savedLocations.push(gameInfo.playerPosition);
+            });
+            $('#btn-log-locations').click(() => {
+                console.log(savedLocations.map(loc => `[${loc.x.toFixed(2)}, ${loc.y.toFixed(2)}, ${loc.z.toFixed(2)}],`).join('\n'));
+            });
+            $('#btn-create-new-account').click(handleCreateNewAccount);
+            $('#btn-save-current-account').click(handleSaveCurrentAccount);
+            $('#btn-save-account-cancel').click(handleCancelSaveCurrentAccount);
+            $('#btn-save-account-confirm').click(handleConfirmSaveCurrentAccount);
+            $('#btn-reload-current-account').click(handleReloadCurrentAccount);
+            $('#btn-unlock-all-realms').click(handleUnlockAllRealms);
+        });
+    </script>
+</head>
+
+<body>
+    <!-- Save Current Account Modal -->
+    <dialog id="modalSaveCurrentAccount" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg flex items-center gap-2 mb-3">
+                <i class="fas fa-user text-primary"></i>
+                Save Current Account
+            </h3>
+
+            <p class="text-sm opacity-70 mb-3">
+                Please enter a username for the current account.
+            </p>
+
+            <input id="input-save-account-username" type="text" placeholder="Username"
+                class="input input-bordered w-full mb-4" autocomplete="off" />
+
+            <div class="modal-action">
+                <button id="btn-save-account-cancel" class="btn btn-ghost">Cancel</button>
+                <button id="btn-save-account-confirm" class="btn btn-primary">Confirm</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <!-- How to Create Account Modal -->
+    <dialog id="modalHowToCreateAccount" class="modal">
+        <div class="modal-box max-w-lg">
+            <h3 class="font-bold text-lg flex items-center gap-2 mb-3">
+                <i class="fas fa-circle-question text-primary"></i>
+                How to Create a New Ready-to-Use Account
+            </h3>
+
+            <ol class="list-decimal list-inside space-y-2 text-sm leading-relaxed">
+                <li>Click <strong>Create New Account</strong>.</li>
+                <li>Wait for the account to load completely.</li>
+                <li>Click <strong>Unlock Account</strong> to skip introductions and tutorials.</li>
+                <li>Click <strong>Reload Current Account</strong> to apply the unlock changes.</li>
+                <li>
+                    <span class="font-semibold">Note:</span> The Realm portals may still appear locked.
+                    Use the <strong>Level Loader</strong> feature as a temporary workaround to access those realms.
+                </li>
+            </ol>
+
+            <div class="modal-action mt-6">
+                <button id="btn-how-to-create-close" class="btn btn-primary w-full"
+                    onclick="modalHowToCreateAccount.close()">
+                    Got it
+                </button>
+            </div>
+        </div>
+
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <dialog id="modalBraveWarning" class="modal">
+        <div class="modal-box max-w-lg text-center">
+            <p class="text-warning font-semibold">Hey! It looks like you're using <strong>Brave Browser.</strong></p>
+            <p class="text-info">Brave's privacy features block the Mod's web connection. Please use
+                <strong>Chrome</strong> or <strong>Firefox</strong> instead for the mod to work properly :)</p>
+
+            <div class="modal-action mt-6">
+                <button id="btn-brave-warning-close" class="btn btn-primary w-full" onclick="modalBraveWarning.close()">
+                    Got it
+                </button>
+            </div>
+        </div>
+
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    <dialog id="modalCredits" class="modal">
+        <div class="modal-box max-w-md text-center">
+            <h2 class="text-2xl font-bold mb-3">Credits</h2>
+    
+            <p class="text-base">
+                Made with ❤️ by
+                <strong class="text-primary">Flurie</strong>
+                <span class="text-gray-400 text-sm">(aka alvindimas05)</span>
+            </p>
+    
+            <p class="mt-2">
+                Big thanks to <strong class="text-primary">XeTrinityz</strong> for the original
+                <strong>TSM Mod</strong> - this one pretty much wouldn't exist without it 😅
+            </p>
+    
+            <p class="mt-4 text-sm text-gray-400">
+                <strong>ThatNoobSkyMod</strong> is basically a copy-paste of TSM, just removed the GUI to support more hardware.
+            </p>
+    
+            <div class="modal-action mt-6">
+                <button id="btn-credits-close" class="btn btn-primary w-full" onclick="modalCredits.close()">
+                    Got it
+                </button>
+            </div>
+        </div>
+    
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>    
+
+    <div class="mx-auto p-4 md:p-6">
+        <!-- Header Section -->
+        <div class="glass-card p-6 mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="w-full grid grid-cols-[max-content_auto] items-center gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-primary">
+                            That Noob Sky Mod
+                        </h1>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div id="badge-mod-update-status">
+                                <div class="badge badge-error gap-2">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>Outdated</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div id="badge-mod-status" class="badge badge-neutral gap-2">
+                                    Offline
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="h-full flex justify-end">
+                        <a class="link link-primary" onclick="modalCredits.showModal()">Credits</a>
+                    </div>
+                    <!-- <div class="h-full flex justify-end">
+                        <button id="btn-save-location" class="btn btn-sm btn-outline btn-info gap-2 mr-2">
+                            <i class="fas fa-save"></i>
+                            Save Location
+                        </button>
+                        <button id="btn-log-locations" class="btn btn-sm btn-outline btn-secondary gap-2">
+                            <i class="fas fa-list"></i>
+                            Log Saved Locations
+                        </button>
+                    </div> -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Left Column -->
+            <div class="space-y-6">
+                <!-- Level Loader Card -->
+                <div class="glass-card p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
+                                <i class="fas fa-map text-secondary text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold">Level Loader</h2>
+                        </div>
+
+                        <div class="badge badge-lg badge-ghost gap-2">
+                            <i class="fas fa-location-dot"></i>
+                            <span id="current-level" class="font-semibold">None</span>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">
+                                    <i class="fas fa-folder"></i> Category
+                                </span>
+                            </label>
+                            <select id="select-level-category" class="select select-bordered w-full mt-1"></select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label">
+                                <span class="label-text font-medium">
+                                    <i class="fas fa-layer-group"></i> Level
+                                </span>
+                            </label>
+                            <select id="select-level-level" class="select select-bordered w-full mt-1"></select>
+                        </div>
+                    </div>
+
+                    <div class="form-control mb-4">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input id="checkbox-level-fade" type="checkbox" checked class="checkbox checkbox-primary"
+                                autocomplete="off">
+                            <span class="label-text">
+                                <i class="fas fa-wand-magic-sparkles text-purple-400"></i> Enable Fade Effect
+                            </span>
+                        </label>
+                    </div>
+
+                    <button id="btn-load-level" class="btn btn-secondary w-full gap-2">
+                        <i class="fas fa-play"></i>
+                        Load Level
+                    </button>
+                </div>
+
+                <!-- Teleporter Card -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <i class="fas fa-location-arrow text-primary text-xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Teleporter</h2>
+                        <div class="ml-auto flex items-center gap-4 text-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">X:</span>
+                                <span class="font-mono text-primary" id="player-position-x">0</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">Y:</span>
+                                <span class="font-mono text-primary" id="player-position-y">0</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">Z:</span>
+                                <span class="font-mono text-primary" id="player-position-z">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3 mb-4">
+                        <div class="form-control">
+                            <div class="flex items-center gap-2">
+                                <label class="label-text font-medium whitespace-nowrap">
+                                    <i class="fas fa-arrows-left-right text-red-400"></i> X
+                                </label>
+                                <input id="input-teleport-x" type="number" placeholder="0" value="0"
+                                    class="input input-bordered w-full" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-control">
+                            <div class="flex items-center gap-2">
+                                <label class="label-text font-medium whitespace-nowrap">
+                                    <i class="fas fa-arrows-up-down text-green-400"></i> Y
+                                </label>
+                                <input id="input-teleport-y" type="number" placeholder="0" value="0"
+                                    class="input input-bordered w-full" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="form-control">
+                            <div class="flex items-center gap-2">
+                                <label class="label-text font-medium whitespace-nowrap">
+                                    <i class="fas fa-up-down-left-right text-blue-400"></i> Z
+                                </label>
+                                <input id="input-teleport-z" type="number" placeholder="0" value="0"
+                                    class="input input-bordered w-full" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <button id="btn-teleport" class="btn btn-primary flex-1 gap-2">
+                            <i class="fas fa-rocket"></i>
+                            Teleport Now
+                        </button>
+                        <div id="teleport-response" class="font-semibold"></div>
+                    </div>
+                </div>
+
+
+                <!-- Accounts Manager Card -->
+                <div class="glass-card p-6">
+                    <div class="grid grid-cols-[max-content_auto] items-center gap-3 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
+                                <i class="fas fa-users text-secondary text-xl"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold">Accounts Manager</h2>
+                        </div>
+                        <!-- <div class="grid items-center justify-end">
+                            <a class="link link-primary" onclick="modalHowToCreateAccount.showModal()">How to Create a New Account?</a>
+                        </div> -->
+                    </div>
+
+                    <div class="grid grid-cols-2 xl:grid-cols-3 gap-4">
+                        <button id="btn-create-new-account" class="btn btn-primary flex items-center gap-2">
+                            <i class="fas fa-user-plus"></i>
+                            Create New Account
+                        </button>
+                        <button id="btn-save-current-account" class="btn btn-secondary flex items-center gap-2">
+                            <i class="fas fa-floppy-disk"></i>
+                            Save Current Account
+                        </button>
+                        <button id="btn-reload-current-account" class="btn btn-info flex items-center gap-2">
+                            <i class="fas fa-rotate-right"></i>
+                            Reload Current Account
+                        </button>
+                    </div>
+
+                    <div id="accounts-manager-list" class="mt-4 space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-6">
+                <!-- Unlocks Card -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                            <i class="fas fa-lock-open text-accent text-xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Unlocks</h2>
+                    </div>
+
+                    <div class="grid grid-cols-2">
+                        <button id="btn-unlock-all-realms" class="btn btn-primary flex items-center gap-2">
+                            <i class="fas fa-globe"></i>
+                            Unlock All Realms
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progression Card -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                            <i class="fas fa-chart-line text-accent text-xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold">Progression</h2>
+                    </div>
+
+                    <!-- Auto Actions -->
+                    <div class="bg-base-200/50 rounded-lg p-4 mb-4">
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-robot text-info"></i>
+                            Auto Actions
+                        </h3>
+                        <div class="grid md:grid-cols-2 gap-2">
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input id="checkbox-auto-burn-candles" type="checkbox"
+                                    class="checkbox checkbox-sm checkbox-info" autocomplete="off">
+                                <span class="label-text flex items-center gap-2">
+                                    <i class="fas fa-fire text-yellow-400"></i>
+                                    Auto Burn Candles
+                                </span>
+                            </label>
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input id="checkbox-auto-burn-plants" type="checkbox"
+                                    class="checkbox checkbox-sm checkbox-success" autocomplete="off">
+                                <span class="label-text flex items-center gap-2">
+                                    <i class="fas fa-seedling text-green-400"></i>
+                                    Auto Burn Plants
+                                </span>
+                            </label>
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input id="checkbox-auto-burn-dyes" type="checkbox"
+                                    class="checkbox checkbox-sm checkbox-error" autocomplete="off">
+                                <span class="label-text flex items-center gap-2">
+                                    <i class="fas fa-droplet text-red-400"></i>
+                                    Auto Burn Dyes
+                                </span>
+                            </label>
+
+                            <label class="label cursor-pointer justify-start gap-3">
+                                <input id="checkbox-auto-collect-wax" type="checkbox"
+                                    class="checkbox checkbox-sm checkbox-warning" autocomplete="off">
+                                <span class="label-text flex items-center gap-2">
+                                    <i class="fas fa-hexagon text-orange-400"></i>
+                                    Auto Collect Wax <span class="text-red-400">(Risky)</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Semi CR Section -->
+                    <div>
+                        <h3 class="font-semibold mb-3 flex items-center gap-2">
+                            <i class="fas fa-star text-warning"></i>
+                            Semi CR
+                        </h3>
+                        <div id="progression-positions"
+                            class="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-sm opacity-50">
+            <p>
+                <i class="fas fa-triangle-exclamation"></i> Use at your own risk
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>
