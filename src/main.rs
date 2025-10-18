@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use eframe::{egui, App, Frame};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver};
