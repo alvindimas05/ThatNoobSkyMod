@@ -17,6 +17,8 @@ struct ModInstallerApp {
     game_path: Option<PathBuf>,
     runtime: tokio::runtime::Runtime,
     status_rx: Option<Receiver<InstallStatus>>,
+    manual_path_input: String,
+    show_manual_input: bool,
 }
 
 impl Default for ModInstallerApp {
@@ -29,6 +31,8 @@ impl Default for ModInstallerApp {
             game_path: None,
             runtime: tokio::runtime::Runtime::new().unwrap(),
             status_rx: None,
+            manual_path_input: String::new(),
+            show_manual_input: false,
         };
         app.detect_steam_path();
         app
@@ -52,7 +56,8 @@ impl ModInstallerApp {
         }
 
         if self.steam_path.is_none() {
-            self.status_message = "⚠ Steam directory not found. Please install manually.".to_string();
+            self.status_message = "⚠ Steam directory not found. Please enter path manually.".to_string();
+            self.show_manual_input = true;
         }
     }
 
@@ -68,11 +73,32 @@ impl ModInstallerApp {
             if folder.exists() {
                 self.game_path = Some(folder);
                 self.status_message = format!("✓ Game found: {}", self.game_path.as_ref().unwrap().display());
+                self.show_manual_input = false;
                 return;
             }
         }
 
         self.status_message = "⚠ Sky Children of the Light not found in Steam directories".to_string();
+        self.show_manual_input = true;
+    }
+
+    fn apply_manual_path(&mut self) {
+        let path = PathBuf::from(&self.manual_path_input);
+
+        // Check if it's a Steam directory
+        if path.join("steamapps").exists() {
+            self.steam_path = Some(path.clone());
+            self.find_game_directory(&path);
+        }
+        // Check if it's directly the game directory
+        else if path.exists() && (path.join("Sky.exe").exists() || path.ends_with("Sky Children of the Light")) {
+            self.game_path = Some(path.clone());
+            self.status_message = format!("✓ Game path set: {}", path.display());
+            self.show_manual_input = false;
+        }
+        else {
+            self.status_message = "❌ Invalid path. Please provide Steam folder or game folder.".to_string();
+        }
     }
 
     fn install_mod(&mut self, ctx: egui::Context) {
@@ -203,7 +229,43 @@ impl App for ModInstallerApp {
                 });
             });
 
-            ui.add_space(30.0);
+            ui.add_space(20.0);
+
+            // Manual Path Input (shown when needed)
+            if self.show_manual_input {
+                ui.group(|ui| {
+                    ui.set_width(470.0);
+                    ui.vertical(|ui| {
+                        ui.label(egui::RichText::new("📁 Manual Path Input:").strong());
+                        ui.add_space(5.0);
+                        ui.label(egui::RichText::new("Enter Steam folder or game folder path")
+                            .size(11.0)
+                            .color(egui::Color32::GRAY));
+                        ui.add_space(5.0);
+
+                        ui.horizontal(|ui| {
+                            ui.add(egui::TextEdit::singleline(&mut self.manual_path_input)
+                                .hint_text("C:\\Program Files (x86)\\Steam")
+                                .desired_width(340.0));
+
+                            if ui.button("Apply").clicked() {
+                                self.apply_manual_path();
+                            }
+                        });
+                    });
+                });
+
+                ui.add_space(20.0);
+            } else if self.game_path.is_some() {
+                // Show option to change path
+                ui.vertical_centered(|ui| {
+                    if ui.button("📝 Change Path").clicked() {
+                        self.show_manual_input = true;
+                        self.manual_path_input.clear();
+                    }
+                });
+                ui.add_space(10.0);
+            }
 
             // Install Button
             ui.vertical_centered(|ui| {
@@ -240,7 +302,7 @@ impl App for ModInstallerApp {
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([500.0, 400.0])
+            .with_inner_size([500.0, 450.0])
             .with_resizable(false),
         ..Default::default()
     };
