@@ -12,3 +12,4 @@ It's just basically a copy-paste of [ThatSkyMod](https://github.com/XeTrinityz/T
 ## Credits
 - [XeTrinityz](https://github.com/XeTrinityz) for the original [ThatSkyMod](https://github.com/XeTrinityz/ThatSkyMod) - this one pretty much wouldn't exist without it 😅 
 - [rosemash](https://github.com/rosemash) for the lua pattern search from [sky-cotl-research](https://github.com/rosemash/sky-cotl-research)
+- [cansysn](https://github.com/cansysn) for teaching me some reverse engineering stuff on Sky
