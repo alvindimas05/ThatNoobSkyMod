@@ -17,8 +17,8 @@ struct ModInstallerApp {
     game_path: Option<PathBuf>,
     runtime: tokio::runtime::Runtime,
     status_rx: Option<Receiver<InstallStatus>>,
-    manual_path_input: String,
     show_manual_input: bool,
+    import_status: String,
 }
 
 impl Default for ModInstallerApp {
@@ -31,8 +31,8 @@ impl Default for ModInstallerApp {
             game_path: None,
             runtime: tokio::runtime::Runtime::new().unwrap(),
             status_rx: None,
-            manual_path_input: String::new(),
             show_manual_input: false,
+            import_status: String::new(),
         };
         app.detect_steam_path();
         app
@@ -56,7 +56,7 @@ impl ModInstallerApp {
         }
 
         if self.steam_path.is_none() {
-            self.status_message = "⚠ Steam directory not found. Please enter path manually.".to_string();
+            self.status_message = "⚠ Steam directory not found. Please browse for path.".to_string();
             self.show_manual_input = true;
         }
     }
@@ -82,23 +82,104 @@ impl ModInstallerApp {
         self.show_manual_input = true;
     }
 
-    fn apply_manual_path(&mut self) {
-        let path = PathBuf::from(&self.manual_path_input);
+    fn browse_for_path(&mut self) {
+        if let Some(path) = rfd::FileDialog::new()
+            .set_title("Select Steam or Game Directory")
+            .pick_folder()
+        {
+            // Check if it's a Steam directory
+            if path.join("steamapps").exists() {
+                self.steam_path = Some(path.clone());
+                self.find_game_directory(&path);
+            }
+            // Check if it's directly the game directory
+            else if path.exists() && (path.join("Sky.exe").exists() || path.ends_with("Sky Children of the Light")) {
+                self.game_path = Some(path.clone());
+                self.status_message = format!("✓ Game path set: {}", path.display());
+                self.show_manual_input = false;
+            }
+            else {
+                self.status_message = "❌ Invalid path. Please select Steam folder or game folder.".to_string();
+            }
+        }
+    }
 
-        // Check if it's a Steam directory
-        if path.join("steamapps").exists() {
-            self.steam_path = Some(path.clone());
-            self.find_game_directory(&path);
+    fn browse_and_import_resources(&mut self) {
+        if self.game_path.is_none() {
+            self.import_status = "❌ Game directory not set. Cannot import resources.".to_string();
+            return;
         }
-        // Check if it's directly the game directory
-        else if path.exists() && (path.join("Sky.exe").exists() || path.ends_with("Sky Children of the Light")) {
-            self.game_path = Some(path.clone());
-            self.status_message = format!("✓ Game path set: {}", path.display());
-            self.show_manual_input = false;
+
+        if let Some(source_folder) = rfd::FileDialog::new()
+            .set_title("Select TSM Resources Folder")
+            .pick_folder()
+        {
+            self.import_status = "⏳ Importing resources...".to_string();
+            
+            let game_path = self.game_path.as_ref().unwrap().clone();
+            let dest_path = game_path.join("TNSM Resources");
+            
+            match self.copy_resources_sync(&source_folder, &dest_path) {
+                Ok(_) => {
+                    self.import_status = "✅ Resources imported successfully!".to_string();
+                }
+                Err(e) => {
+                    self.import_status = format!("❌ Import failed: {}", e);
+                }
+            }
         }
-        else {
-            self.status_message = "❌ Invalid path. Please provide Steam folder or game folder.".to_string();
+    }
+
+    fn copy_resources_sync(&self, source: &PathBuf, dest: &PathBuf) -> Result<(), String> {
+        // Create destination directory if it doesn't exist
+        std::fs::create_dir_all(dest)
+            .map_err(|e| format!("Failed to create destination directory: {}", e))?;
+
+        // Read source directory
+        let entries = std::fs::read_dir(source)
+            .map_err(|e| format!("Failed to read source directory: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let source_path = entry.path();
+            let file_name = entry.file_name();
+            let dest_path = dest.join(&file_name);
+
+            if source_path.is_dir() {
+                // Recursively copy directories
+                self.copy_dir_recursive(&source_path, &dest_path)?;
+            } else {
+                // Copy files
+                std::fs::copy(&source_path, &dest_path)
+                    .map_err(|e| format!("Failed to copy {}: {}", file_name.to_string_lossy(), e))?;
+            }
         }
+
+        Ok(())
+    }
+
+    fn copy_dir_recursive(&self, source: &PathBuf, dest: &PathBuf) -> Result<(), String> {
+        std::fs::create_dir_all(dest)
+            .map_err(|e| format!("Failed to create directory: {}", e))?;
+
+        let entries = std::fs::read_dir(source)
+            .map_err(|e| format!("Failed to read directory: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let source_path = entry.path();
+            let file_name = entry.file_name();
+            let dest_path = dest.join(&file_name);
+
+            if source_path.is_dir() {
+                self.copy_dir_recursive(&source_path, &dest_path)?;
+            } else {
+                std::fs::copy(&source_path, &dest_path)
+                    .map_err(|e| format!("Failed to copy file: {}", e))?;
+            }
+        }
+
+        Ok(())
     }
 
     fn install_mod(&mut self, ctx: egui::Context) {
@@ -231,37 +312,19 @@ impl App for ModInstallerApp {
 
             ui.add_space(20.0);
 
-            // Manual Path Input (shown when needed)
-            if self.show_manual_input {
-                ui.group(|ui| {
-                    ui.set_width(470.0);
-                    ui.vertical(|ui| {
-                        ui.label(egui::RichText::new("📁 Manual Path Input:").strong());
-                        ui.add_space(5.0);
-                        ui.label(egui::RichText::new("Enter Steam folder or game folder path")
-                            .size(11.0)
-                            .color(egui::Color32::GRAY));
-                        ui.add_space(5.0);
-
-                        ui.horizontal(|ui| {
-                            ui.add(egui::TextEdit::singleline(&mut self.manual_path_input)
-                                .hint_text("C:\\Program Files (x86)\\Steam")
-                                .desired_width(340.0));
-
-                            if ui.button("Apply").clicked() {
-                                self.apply_manual_path();
-                            }
-                        });
-                    });
+            // Browse for Path button
+            if self.show_manual_input || self.game_path.is_none() {
+                ui.vertical_centered(|ui| {
+                    if ui.button("📁 Browse for Game Directory").clicked() {
+                        self.browse_for_path();
+                    }
                 });
-
-                ui.add_space(20.0);
+                ui.add_space(10.0);
             } else if self.game_path.is_some() {
                 // Show option to change path
                 ui.vertical_centered(|ui| {
                     if ui.button("📝 Change Path").clicked() {
-                        self.show_manual_input = true;
-                        self.manual_path_input.clear();
+                        self.browse_for_path();
                     }
                 });
                 ui.add_space(10.0);
@@ -284,7 +347,37 @@ impl App for ModInstallerApp {
                 if self.is_installing {
                     ui.add_space(10.0);
                     ui.spinner();
-                    ctx.request_repaint(); // Keep UI responsive during async operation
+                    ctx.request_repaint();
+                }
+            });
+
+            ui.add_space(20.0);
+
+            // Import TSM Resources Button
+            ui.vertical_centered(|ui| {
+                let import_button = egui::Button::new(
+                    egui::RichText::new("📦 Import TSM Resources")
+                        .size(16.0)
+                ).min_size(egui::vec2(200.0, 40.0));
+
+                if ui.add(import_button).clicked() {
+                    self.browse_and_import_resources();
+                }
+
+                if !self.import_status.is_empty() {
+                    ui.add_space(5.0);
+                    
+                    let import_color = if self.import_status.contains("✅") {
+                        egui::Color32::from_rgb(100, 255, 100)
+                    } else if self.import_status.contains("⏳") {
+                        egui::Color32::from_rgb(100, 200, 255)
+                    } else {
+                        egui::Color32::from_rgb(255, 100, 100)
+                    };
+                    
+                    ui.label(egui::RichText::new(&self.import_status)
+                        .size(12.0)
+                        .color(import_color));
                 }
             });
 
@@ -302,7 +395,7 @@ impl App for ModInstallerApp {
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([500.0, 450.0])
+            .with_inner_size([500.0, 520.0])
             .with_resizable(false),
         ..Default::default()
     };
