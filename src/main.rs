@@ -19,6 +19,7 @@ struct ModInstallerApp {
     status_rx: Option<Receiver<InstallStatus>>,
     show_manual_input: bool,
     import_status: String,
+    is_mod_installed: bool,
 }
 
 impl Default for ModInstallerApp {
@@ -33,8 +34,10 @@ impl Default for ModInstallerApp {
             status_rx: None,
             show_manual_input: false,
             import_status: String::new(),
+            is_mod_installed: false,
         };
         app.detect_steam_path();
+        app.check_mod_installed();
         app
     }
 }
@@ -82,6 +85,13 @@ impl ModInstallerApp {
         self.show_manual_input = true;
     }
 
+    fn check_mod_installed(&mut self) {
+        if let Some(game_path) = &self.game_path {
+            let dll_path = game_path.join("powrprof.dll");
+            self.is_mod_installed = dll_path.exists();
+        }
+    }
+
     fn browse_for_path(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
             .set_title("Select Steam or Game Directory")
@@ -101,6 +111,7 @@ impl ModInstallerApp {
             else {
                 self.status_message = "❌ Invalid path. Please select Steam folder or game folder.".to_string();
             }
+            self.check_mod_installed();
         }
     }
 
@@ -215,6 +226,30 @@ impl ModInstallerApp {
         });
     }
 
+    fn uninstall_mod(&mut self) {
+        if self.game_path.is_none() {
+            self.status_message = "❌ Game directory not found. Cannot uninstall.".to_string();
+            return;
+        }
+
+        let dll_path = self.game_path.as_ref().unwrap().join("powrprof.dll");
+        
+        if !dll_path.exists() {
+            self.status_message = "⚠ Mod is not installed.".to_string();
+            return;
+        }
+
+        match std::fs::remove_file(&dll_path) {
+            Ok(_) => {
+                self.status_message = "✅ Mod uninstalled successfully!".to_string();
+                self.is_mod_installed = false;
+            }
+            Err(e) => {
+                self.status_message = format!("❌ Uninstallation failed: {}", e);
+            }
+        }
+    }
+
     fn check_install_status(&mut self) {
         if let Some(rx) = &self.status_rx {
             if let Ok(status) = rx.try_recv() {
@@ -222,6 +257,7 @@ impl ModInstallerApp {
                     InstallStatus::Success(msg) => {
                         self.status_message = msg;
                         self.is_installing = false;
+                        self.is_mod_installed = true;
                         self.status_rx = None;
                     }
                     InstallStatus::Error(msg) => {
@@ -307,6 +343,13 @@ impl App for ModInstallerApp {
                             .size(11.0)
                             .color(egui::Color32::GRAY));
                     }
+
+                    if self.is_mod_installed {
+                        ui.add_space(5.0);
+                        ui.label(egui::RichText::new("🔧 Mod is currently installed")
+                            .size(11.0)
+                            .color(egui::Color32::from_rgb(100, 255, 100)));
+                    }
                 });
             });
 
@@ -330,25 +373,41 @@ impl App for ModInstallerApp {
                 ui.add_space(10.0);
             }
 
-            // Install Button
+            // Install/Uninstall Buttons
             ui.vertical_centered(|ui| {
                 let install_button = egui::Button::new(
                     egui::RichText::new("⚡ Install Mod")
                         .size(18.0)
                         .strong()
-                ).min_size(egui::vec2(200.0, 45.0));
+                ).min_size(egui::vec2(180.0, 45.0));
 
-                ui.add_enabled_ui(!self.is_installing, |ui| {
+                ui.add_enabled_ui(!self.is_installing && !self.is_mod_installed, |ui| {
                     if ui.add(install_button).clicked() {
                         self.install_mod(ctx.clone());
                     }
                 });
-
+                
                 if self.is_installing {
                     ui.add_space(10.0);
                     ui.spinner();
                     ctx.request_repaint();
                 }
+            });
+
+            ui.add_space(20.0);
+
+            ui.vertical_centered(|ui| {
+                let uninstall_button = egui::Button::new(
+                    egui::RichText::new("🗑 Uninstall Mod")
+                        .size(18.0)
+                        .strong()
+                ).min_size(egui::vec2(180.0, 45.0));
+
+                ui.add_enabled_ui(!self.is_installing && self.is_mod_installed, |ui| {
+                    if ui.add(uninstall_button).clicked() {
+                        self.uninstall_mod();
+                    }
+                });
             });
 
             ui.add_space(20.0);
