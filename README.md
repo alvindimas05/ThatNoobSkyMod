@@ -1,5 +1,7 @@
-# ThatNoobSkyMod
+## (Retired)
+Since [ThatSkyMod](https://github.com/XeTrinityz/ThatSkyMod) already fixed the older GPUs or iGPUs issue, this mod is not going be updated again.
 
+# ThatNoobSkyMod
 Just a mod for fun. Originally made to give support for more hardware.
 It's just basically a copy-paste of [ThatSkyMod](https://github.com/XeTrinityz/ThatSkyMod) but not completely finished yet.
 
